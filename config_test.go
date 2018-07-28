@@ -1,12 +1,13 @@
 package config
 
 import (
-	"config/env"
-	"config/json"
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ande980/config/env"
+	"github.com/ande980/config/json"
 )
 
 type Config struct {
