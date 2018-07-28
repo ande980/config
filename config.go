@@ -1,12 +1,12 @@
 package config
 
 import (
-	"config/env"
-	"config/flags"
-	"config/json"
 	"reflect"
 	"sync"
 
+	"github.com/ande980/config/env"
+	"github.com/ande980/config/flags"
+	"github.com/ande980/config/json"
 	multierror "github.com/hashicorp/go-multierror"
 )
 
