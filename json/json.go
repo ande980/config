@@ -22,7 +22,7 @@ type Provider struct {
 // the buffer. If there is an error reading the file it panics.
 func New() *Provider {
 	filepathNoExt := strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0]))
-	return WithPath(filepathNoExt)
+	return WithPath(filepathNoExt + ".json")
 }
 
 // WithPath allows for a non-standard configuration file to be
