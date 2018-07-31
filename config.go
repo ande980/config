@@ -1,6 +1,7 @@
 package config
 
 import (
+	"flag"
 	"reflect"
 	"sync"
 
@@ -94,6 +95,10 @@ func Parse(i interface{}) error {
 	mu.Lock()
 	for _, provider := range providers {
 		if err := provider.Parse(i); err != nil {
+			if err == flag.ErrHelp { // We want to stop processing here - sentinal value
+				mu.Unlock()
+				return err
+			}
 			result = multierror.Append(result, err)
 		}
 	}

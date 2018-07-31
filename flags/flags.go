@@ -40,7 +40,7 @@ func (f *FlagSet) parse(i interface{}, args ...string) error {
 
 	if err := f.FlagSet.Parse(args); err != nil {
 		if err == flag.ErrHelp {
-			return nil
+			return err
 		}
 		return fmt.Errorf("parsing flags: %v", err)
 	}
