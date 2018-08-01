@@ -36,7 +36,9 @@ func (f *FlagSet) parse(i interface{}, args ...string) error {
 		return nil
 	}
 
-	f.visit(v, "")
+	if err := f.visit(v, ""); err != nil {
+		return err
+	}
 
 	if err := f.FlagSet.Parse(args); err != nil {
 		if err == flag.ErrHelp {
@@ -48,13 +50,13 @@ func (f *FlagSet) parse(i interface{}, args ...string) error {
 	return nil
 }
 
-func (f *FlagSet) visit(v reflect.Value, prefix string) {
+func (f *FlagSet) visit(v reflect.Value, prefix string) error {
 	if v.Kind() != reflect.Struct {
-		return
+		return nil
 	}
 
 	if !v.IsValid() {
-		return
+		return nil
 	}
 
 	for i := 0; i < v.NumField(); i++ {
@@ -74,7 +76,9 @@ func (f *FlagSet) visit(v reflect.Value, prefix string) {
 		name = strings.ToLower(name)
 
 		if field.Kind() == reflect.Struct {
-			f.visit(field, name)
+			if err := f.visit(field, name); err != nil {
+				return err
+			}
 			continue
 		}
 
@@ -97,61 +101,70 @@ func (f *FlagSet) visit(v reflect.Value, prefix string) {
 		case reflect.String:
 			f.StringVar(field.Addr().Interface().(*string), name, field.String(), usage)
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			f.Int64Var(toInt64(field), name, field.Int(), usage)
+			i64, err := toInt64(field)
+			if err != nil {
+				return err
+			}
+			f.Int64Var(i64, name, field.Int(), usage)
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			f.Uint64Var(toUint64(field), name, field.Uint(), usage)
+			u64, err := toUint64(field)
+			if err != nil {
+				return err
+			}
+			f.Uint64Var(u64, name, field.Uint(), usage)
 		case reflect.Bool:
 			f.BoolVar(field.Addr().Interface().(*bool), name, field.Bool(), usage)
 		case reflect.Float64:
 			f.Float64Var(field.Addr().Interface().(*float64), name, field.Float(), usage)
 		}
 	}
+	return nil
 }
 
-func toInt64(v reflect.Value) *int64 {
+func toInt64(v reflect.Value) (*int64, error) {
 	switch v.Kind() {
 	case reflect.Int:
 		i := v.Addr().Interface().(*int)
 		i64 := int64(*i)
-		return &i64
+		return &i64, nil
 	case reflect.Int8:
 		i := v.Addr().Interface().(*int8)
 		i64 := int64(*i)
-		return &i64
+		return &i64, nil
 	case reflect.Int16:
 		i := v.Addr().Interface().(*int16)
 		i64 := int64(*i)
-		return &i64
+		return &i64, nil
 	case reflect.Int32:
 		i := v.Addr().Interface().(*int32)
 		i64 := int64(*i)
-		return &i64
+		return &i64, nil
 	case reflect.Int64:
-		return v.Addr().Interface().(*int64)
+		return v.Addr().Interface().(*int64), nil
 	}
-	panic(&reflect.ValueError{Method: "toInt64", Kind: v.Kind()})
+	return nil, &reflect.ValueError{Method: "toInt64", Kind: v.Kind()}
 }
 
-func toUint64(v reflect.Value) *uint64 {
+func toUint64(v reflect.Value) (*uint64, error) {
 	switch v.Kind() {
 	case reflect.Uint:
 		i := v.Addr().Interface().(*uint)
 		ui64 := uint64(*i)
-		return &ui64
+		return &ui64, nil
 	case reflect.Uint8:
 		i := v.Addr().Interface().(*uint8)
 		ui64 := uint64(*i)
-		return &ui64
+		return &ui64, nil
 	case reflect.Uint16:
 		i := v.Addr().Interface().(*uint16)
 		ui64 := uint64(*i)
-		return &ui64
+		return &ui64, nil
 	case reflect.Uint32:
 		i := v.Addr().Interface().(*uint32)
 		ui64 := uint64(*i)
-		return &ui64
+		return &ui64, nil
 	case reflect.Uint64:
-		return v.Addr().Interface().(*uint64)
+		return v.Addr().Interface().(*uint64), nil
 	}
-	panic(&reflect.ValueError{Method: "toUint64", Kind: v.Kind()})
+	return nil, &reflect.ValueError{Method: "toUint64", Kind: v.Kind()}
 }

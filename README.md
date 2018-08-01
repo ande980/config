@@ -22,9 +22,8 @@ that. This also means that if you have other flags specified on the command line
 to interpret them with another library) then the flag library will stop processing and return an 
 error. I'm assuming that if you have a configuration struct then all of the configuration is in it 
 and you want this library to handle it.
-* This library panics if an error is encountered in its reflection based functions. This is just to 
-maintain consistency with the reflect package. There are reasons this isn't optimal sometimes so I 
-might change it.
+* This library does not panic in an of itself. However, although care has been taken not to cause a
+panic from the reflect library I can't guarantee I found them all.
 
 ## Usage
 Most common usage would simply be this:
@@ -48,6 +47,9 @@ func main() {
 func run() error {
     cfg := &Cfg{}
     if err := config.Parse(cfg); err != nil {
+        if err == flag.ErrHelp {
+            return nil
+        }
         return err    
     }
     // use cfg
@@ -97,12 +99,24 @@ func main() {
 func run() error {
     cfg := &Cfg{}
     if err := config.Parse(cfg); err != nil {
+        if err == flag.ErrHelp {
+            return nil
+        }
         return err    
     }
     // use cfg
 }
 ```
 
+## Additional Providers
+Both a toml, and a yaml, provider have been created but neither are registered by default.
+This is to keep the import graph small and restricted to (almost) only standard libraries.
+Only one file provider can be registered at once, so registering the toml provider for example
+will unregister the json or yaml provider if either are registered.
+
 ## TODO
-- [ ] Either add in panic recovery or change reflection panics to errors  
+- [x] Either add in panic recovery or change reflection panics to errors  
 - [ ] Generate default usage verbiage if none is provided  
+- [x] Add toml support
+- [x] Add yaml support
+- [ ] Tests for toml and yaml providers

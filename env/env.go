@@ -36,18 +36,16 @@ func (p *Provider) Parse(i interface{}) error {
 		return nil
 	}
 
-	p.visit(v, p.prefix)
-
-	return nil
+	return p.visit(v, p.prefix)
 }
 
-func (p *Provider) visit(v reflect.Value, prefix string) {
+func (p *Provider) visit(v reflect.Value, prefix string) error {
 	if v.Kind() != reflect.Struct {
-		return
+		return nil
 	}
 
 	if !v.IsValid() {
-		return
+		return nil
 	}
 
 	for i := 0; i < v.NumField(); i++ {
@@ -67,17 +65,14 @@ func (p *Provider) visit(v reflect.Value, prefix string) {
 		name = strings.ToUpper(name)
 
 		if field.Kind() == reflect.Struct {
-			p.visit(field, name)
+			if err := p.visit(field, name); err != nil {
+				return err
+			}
 			continue
 		}
 
 		if !field.CanAddr() || !field.CanInterface() {
 			continue
-		}
-
-		usage := v.Type().Field(i).Tag.Get("usage")
-		if usage == "" {
-			// TODO
 		}
 
 		val := os.Getenv(name)
@@ -89,7 +84,7 @@ func (p *Provider) visit(v reflect.Value, prefix string) {
 		if field.Type() == reflect.TypeOf(time.Second) {
 			dur, err := time.ParseDuration(val)
 			if err != nil {
-				panic(fmt.Errorf("parsing duration: %v", err))
+				return fmt.Errorf("parsing duration: %v", err)
 			}
 			field.Set(reflect.ValueOf(dur))
 			continue
@@ -99,29 +94,34 @@ func (p *Provider) visit(v reflect.Value, prefix string) {
 		case reflect.String:
 			field.SetString(val)
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			toCorrectIntType(field, val)
+			if err := toCorrectIntType(field, val); err != nil {
+				return err
+			}
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			toCorrectUintType(field, val)
+			if err := toCorrectUintType(field, val); err != nil {
+				return err
+			}
 		case reflect.Bool:
 			b, err := strconv.ParseBool(val)
 			if err != nil {
-				panic(fmt.Errorf("parsing bool: %v", err))
+				return fmt.Errorf("parsing bool: %v", err)
 			}
 			field.SetBool(b)
 		case reflect.Float64:
 			f, err := strconv.ParseFloat(val, 64)
 			if err != nil {
-				panic(fmt.Errorf("parsing float: %v", err))
+				return fmt.Errorf("parsing float: %v", err)
 			}
 			field.SetFloat(f)
 		}
 	}
+	return nil
 }
 
-func toCorrectIntType(v reflect.Value, s string) {
+func toCorrectIntType(v reflect.Value, s string) error {
 	ival, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
-		panic(fmt.Errorf("parsing int: %v", err))
+		return fmt.Errorf("parsing int: %v", err)
 	}
 
 	switch v.Kind() {
@@ -135,14 +135,16 @@ func toCorrectIntType(v reflect.Value, s string) {
 		v.Set(reflect.ValueOf(int32(ival)))
 	case reflect.Int64:
 		v.SetInt(ival)
+	default:
+		return &reflect.ValueError{Method: "toCorrectIntType", Kind: v.Kind()}
 	}
-	panic(&reflect.ValueError{Method: "toCorrectIntType", Kind: v.Kind()})
+	return nil
 }
 
-func toCorrectUintType(v reflect.Value, s string) {
+func toCorrectUintType(v reflect.Value, s string) error {
 	ival, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {
-		panic(fmt.Errorf("parsing int: %v", err))
+		return fmt.Errorf("parsing int: %v", err)
 	}
 
 	switch v.Kind() {
@@ -156,6 +158,8 @@ func toCorrectUintType(v reflect.Value, s string) {
 		v.Set(reflect.ValueOf(uint32(ival)))
 	case reflect.Uint64:
 		v.SetUint(ival)
+	default:
+		return &reflect.ValueError{Method: "toCorrectUintType", Kind: v.Kind()}
 	}
-	panic(&reflect.ValueError{Method: "toCorrectUintType", Kind: v.Kind()})
+	return nil
 }

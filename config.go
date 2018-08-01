@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -71,30 +72,45 @@ func Register(p Provider) {
 // If a single provider returns an error then it will be return even if
 // all other providers functioned correctly.
 func Parse(i interface{}) error {
+	var err error
+	defer func() {
+		if p := recover(); p != nil {
+			switch t := p.(type) {
+			case error:
+				err = t
+			default:
+				err = fmt.Errorf("%v", t)
+			}
+		}
+	}()
+
 	v := reflect.ValueOf(i)
 	if v.Kind() != reflect.Ptr {
-		panic(&reflect.ValueError{Method: "config.Register", Kind: reflect.Ptr})
+		err = &reflect.ValueError{Method: "config.Register", Kind: reflect.Ptr}
+		return err
 	}
 
 	v = v.Elem()
 	if v.Kind() != reflect.Struct {
-		panic(&reflect.ValueError{Method: "config.Register", Kind: reflect.Struct})
+		err = &reflect.ValueError{Method: "config.Register", Kind: reflect.Struct}
+		return err
 	}
 
 	if len(providers) == 0 {
-		panic("no registered providers")
+		err = fmt.Errorf("no registered providers")
+		return err
 	}
 
 	if initer, ok := i.(Initer); ok {
-		if err := initer.Init(); err != nil {
-			panic(err)
+		if err = initer.Init(); err != nil {
+			return err
 		}
 	}
 
 	var result *multierror.Error
 	mu.Lock()
 	for _, provider := range providers {
-		if err := provider.Parse(i); err != nil {
+		if err = provider.Parse(i); err != nil {
 			if err == flag.ErrHelp { // We want to stop processing here - sentinal value
 				mu.Unlock()
 				return err
@@ -105,10 +121,11 @@ func Parse(i interface{}) error {
 	mu.Unlock()
 
 	if validator, ok := i.(Validator); ok {
-		if err := validator.Validate(); err != nil {
-			panic(err)
+		if err = validator.Validate(); err != nil {
+			return err
 		}
 	}
 
-	return result.ErrorOrNil()
+	err = result.ErrorOrNil()
+	return err
 }
