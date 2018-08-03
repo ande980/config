@@ -55,7 +55,7 @@ func (p *Provider) Parse(i interface{}) error {
 		return p.err
 	}
 
-	if _, err := toml.DecodeReader(p.r, i); err != nil {
+	if _, err := toml.DecodeReader(p.r, i); err != nil && err != io.EOF {
 		return fmt.Errorf("decoding toml file: %v", err)
 	}
 

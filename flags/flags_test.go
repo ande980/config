@@ -57,3 +57,30 @@ func TestFlags(t *testing.T) {
 		t.Errorf("expected '%s', got '%s'", "3h", cfg.C)
 	}
 }
+
+func TestNames(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		out  string
+	}{
+		{
+			"test1", "ProxyAddr", "proxy-addr",
+		},
+		{
+			"test2", "BaseURL", "base-url",
+		},
+		{
+			"test3", "transactionID", "transaction-id",
+		},
+		{
+			"test4", "BaseURLPart", "base-url-part",
+		},
+	}
+
+	for _, test := range tests {
+		if canon := canonicalName(test.in); canon != test.out {
+			t.Errorf("%s: expected '%s', got '%s'", test.name, test.out, canon)
+		}
+	}
+}

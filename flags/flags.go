@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // FlagSet embeds a flags.FlagSet for the purposes of defining
@@ -73,7 +74,7 @@ func (f *FlagSet) visit(v reflect.Value, prefix string) error {
 				name = prefix + "-" + name
 			}
 		}
-		name = strings.ToLower(name)
+		name = canonicalName(name)
 
 		if field.Kind() == reflect.Struct {
 			if err := f.visit(field, name); err != nil {
@@ -167,4 +168,26 @@ func toUint64(v reflect.Value) (*uint64, error) {
 		return v.Addr().Interface().(*uint64), nil
 	}
 	return nil, &reflect.ValueError{Method: "toUint64", Kind: v.Kind()}
+}
+
+func canonicalName(name string) string {
+	var canon string
+	for i, r := range name {
+		if unicode.IsUpper(r) {
+			switch {
+			case i == len(name)-1: // last char
+			case len(canon) == 0: // first char
+			default:
+				switch {
+				case unicode.IsLower(rune(name[i-1])):
+					canon += "-"
+				case unicode.IsLower(rune(name[i+1])) && !unicode.IsPunct(rune(canon[len(canon)-1])):
+					canon += "-"
+				}
+			}
+		}
+		canon += string(r)
+	}
+
+	return strings.ToLower(canon)
 }

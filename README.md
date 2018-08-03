@@ -116,7 +116,8 @@ will unregister the json or yaml provider if either are registered.
 
 ## TODO
 - [x] Either add in panic recovery or change reflection panics to errors  
-- [ ] Generate default usage verbiage if none is provided  
 - [x] Add toml support
 - [x] Add yaml support
-- [ ] Tests for toml and yaml providers
+- [x] More canonical flag names
+- [x] Tests for toml and yaml providers  
+- [ ] Generate default usage verbiage if none is provided  

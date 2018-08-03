@@ -55,7 +55,7 @@ func (p *Provider) Parse(i interface{}) error {
 		return p.err
 	}
 
-	if err := yaml.NewDecoder(p.r).Decode(i); err != nil {
+	if err := yaml.NewDecoder(p.r).Decode(i); err != nil && err != io.EOF {
 		return fmt.Errorf("decoding yaml file: %v", err)
 	}
 
