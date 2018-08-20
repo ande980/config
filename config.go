@@ -64,6 +64,14 @@ func Register(p Provider) {
 	})
 
 	mu.Lock()
+	for i, prvdr := range providers {
+		if reflect.TypeOf(prvdr) == reflect.TypeOf(p) {
+			copy(providers[i:], providers[i+1:])
+			providers[len(providers)-1] = nil
+			providers = providers[:len(providers)-1]
+			break
+		}
+	}
 	providers = append(providers, p)
 	mu.Unlock()
 }
