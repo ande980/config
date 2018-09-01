@@ -1,14 +1,21 @@
 package flags
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
 	"unicode"
+)
+
+var (
+	// ErrHelp is returned when the -h or --help flags are used.
+	ErrHelp = errors.New("help requested")
+	// ErrVersion is returned when the -v or --version flags are used.
+	ErrVersion = errors.New("version requested")
 )
 
 // FlagSet embeds a flags.FlagSet for the purposes of defining
@@ -16,17 +23,29 @@ import (
 // to the Parse function.
 type FlagSet struct {
 	*flag.FlagSet
+	version bool
 }
 
 // New instantiates an empty usable flagset ready for parsing.
 func New() *FlagSet {
-	filepathNoExt := strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0]))
-	return &FlagSet{flag.NewFlagSet(filepathNoExt, flag.ContinueOnError)}
+	f := &FlagSet{flag.NewFlagSet("", flag.ContinueOnError), false}
+	f.BoolVar(&f.version, "version", false, "Print the current version")
+	f.BoolVar(&f.version, "v", false, "Print the current version")
+	return f
 }
 
 // Parse implements the config.Provider interface.
 func (f *FlagSet) Parse(i interface{}) error {
-	return f.parse(i, os.Args[1:]...)
+	if err := f.parse(i, os.Args[1:]...); err != nil {
+		if err == flag.ErrHelp {
+			return ErrHelp
+		}
+		return err
+	}
+	if f.version {
+		return ErrVersion
+	}
+	return nil
 }
 
 func (f *FlagSet) parse(i interface{}, args ...string) error {

@@ -1,7 +1,6 @@
 package config
 
 import (
-	"flag"
 	"fmt"
 	"reflect"
 	"sync"
@@ -79,8 +78,7 @@ func Register(p Provider) {
 // Parse acccepts a variadic number of config providers and returns an error.
 // If a single provider returns an error then it will be return even if
 // all other providers functioned correctly.
-func Parse(i interface{}) error {
-	var err error
+func Parse(i interface{}) (err error) {
 	defer func() {
 		if p := recover(); p != nil {
 			switch t := p.(type) {
@@ -119,7 +117,7 @@ func Parse(i interface{}) error {
 	mu.Lock()
 	for _, provider := range providers {
 		if err = provider.Parse(i); err != nil {
-			if err == flag.ErrHelp { // We want to stop processing here - sentinal value
+			if err == flags.ErrHelp || err == flags.ErrVersion { // We want to stop processing here - sentinal values
 				mu.Unlock()
 				return err
 			}
