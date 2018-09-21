@@ -1,20 +1,24 @@
 package config
 
 import (
+	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
-	"sync"
 
 	"github.com/ande980/config/env"
 	"github.com/ande980/config/flags"
 	"github.com/ande980/config/json"
+	"github.com/ande980/config/toml"
+	"github.com/ande980/config/yaml"
 	multierror "github.com/hashicorp/go-multierror"
 )
 
-func init() {
-	Register(env.New())
-	Register(json.New())
-	Register(flags.New())
+// Yay for global state. Why are you parsing more than one configuration file?
+var providers = []Provider{
+	env.New(),
+	flags.New(),
 }
 
 // Initer is an optional interface that configuration structs
@@ -46,35 +50,6 @@ type Provider interface {
 	Parse(interface{}) error
 }
 
-var (
-	mu        sync.Mutex
-	once      sync.Once
-	providers []Provider
-)
-
-// Register accepts a provider and registeres it for runtime.
-// Unlike sql driver registrations, multiple registrations per
-// type are allowed but each successive call will replace the last.
-// This is to allow a default to be registered, but a more specific
-// variant to be registered later in place of it.
-func Register(p Provider) {
-	once.Do(func() {
-		providers = []Provider{}
-	})
-
-	mu.Lock()
-	for i, prvdr := range providers {
-		if reflect.TypeOf(prvdr) == reflect.TypeOf(p) {
-			copy(providers[i:], providers[i+1:])
-			providers[len(providers)-1] = nil
-			providers = providers[:len(providers)-1]
-			break
-		}
-	}
-	providers = append(providers, p)
-	mu.Unlock()
-}
-
 // Parse acccepts a variadic number of config providers and returns an error.
 // If a single provider returns an error then it will be return even if
 // all other providers functioned correctly.
@@ -90,20 +65,39 @@ func Parse(i interface{}) (err error) {
 		}
 	}()
 
+	// This is highly opinionated but it does what I need it to.
+	fs := flag.NewFlagSet("", flag.ContinueOnError)
+	fs.Parse(os.Args[1:])
+	if len(fs.Args()) > 0 {
+		configPath := fs.Args()[0]
+		if _, err := os.Stat(configPath); err == nil {
+			switch filepath.Ext(configPath) {
+			case ".json":
+				providers = append(providers, json.WithPath(configPath))
+			case ".toml":
+				providers = append(providers, toml.WithPath(configPath))
+			case ".yaml", ".yml":
+				providers = append(providers, yaml.WithPath(configPath))
+			}
+		}
+	} else {
+		providers = append(providers, json.New(), toml.New(), yaml.New())
+	}
+
 	v := reflect.ValueOf(i)
 	if v.Kind() != reflect.Ptr {
-		err = &reflect.ValueError{Method: "config.Register", Kind: reflect.Ptr}
+		err = &reflect.ValueError{Method: "parser.Parse", Kind: reflect.Ptr}
 		return err
 	}
 
 	v = v.Elem()
 	if v.Kind() != reflect.Struct {
-		err = &reflect.ValueError{Method: "config.Register", Kind: reflect.Struct}
+		err = &reflect.ValueError{Method: "parser.Parse", Kind: reflect.Struct}
 		return err
 	}
 
 	if len(providers) == 0 {
-		err = fmt.Errorf("no registered providers")
+		err = fmt.Errorf("no providers specified")
 		return err
 	}
 
@@ -114,17 +108,14 @@ func Parse(i interface{}) (err error) {
 	}
 
 	var result *multierror.Error
-	mu.Lock()
 	for _, provider := range providers {
 		if err = provider.Parse(i); err != nil {
 			if err == flags.ErrHelp || err == flags.ErrVersion { // We want to stop processing here - sentinal values
-				mu.Unlock()
 				return err
 			}
 			result = multierror.Append(result, err)
 		}
 	}
-	mu.Unlock()
 
 	if validator, ok := i.(Validator); ok {
 		if err = validator.Validate(); err != nil {
