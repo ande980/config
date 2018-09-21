@@ -34,11 +34,16 @@ func TestFlags(t *testing.T) {
 	}
 
 	f.VisitAll(func(f *flag.Flag) {
-		if f.Name == "z" {
+		switch f.Name {
+		case "z":
 			if f.Usage != "The string value of A" {
 				t.Errorf("%s: expected '%s', got '%s'", f.Name, "The string value of A", f.Usage)
 			}
-		} else {
+		case "v", "version":
+			if f.Usage != "Print the current version" {
+				t.Errorf("%s: expected '%s', got '%s'", f.Name, "Print the current version", f.Usage)
+			}
+		default:
 			if f.Usage != "" {
 				t.Errorf("%s: expected '%s', got '%s'", f.Name, "", f.Usage)
 			}
