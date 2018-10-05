@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -75,6 +76,8 @@ func Parse(i interface{}) (err error) {
 
 	// This is highly opinionated but it does what I need it to.
 	fs := flag.NewFlagSet("", flag.ContinueOnError)
+	fs.Usage = func() {}
+	fs.SetOutput(ioutil.Discard)
 	fs.Parse(os.Args[1:])
 	if len(fs.Args()) > 0 {
 		configPath := fs.Args()[0]
