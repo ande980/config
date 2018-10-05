@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -13,6 +14,13 @@ import (
 	"github.com/ande980/config/toml"
 	"github.com/ande980/config/yaml"
 	multierror "github.com/hashicorp/go-multierror"
+)
+
+var (
+	// ErrHelp is returned when the -h or --help flags are used.
+	ErrHelp = errors.New("help requested")
+	// ErrVersion is returned when the -v or --version flags are used.
+	ErrVersion = errors.New("version requested")
 )
 
 // Yay for global state. Why are you parsing more than one configuration file?
@@ -110,10 +118,14 @@ func Parse(i interface{}) (err error) {
 	var result *multierror.Error
 	for _, provider := range providers {
 		if err = provider.Parse(i); err != nil {
-			if err == flags.ErrHelp || err == flags.ErrVersion { // We want to stop processing here - sentinal values
-				return err
+			switch err {
+			case flags.ErrHelp:
+				return ErrHelp
+			case flags.ErrVersion:
+				return ErrVersion
+			default:
+				result = multierror.Append(result, err)
 			}
-			result = multierror.Append(result, err)
 		}
 	}
 
