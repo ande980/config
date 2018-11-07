@@ -90,6 +90,8 @@ func Parse(i interface{}) (err error) {
 			case ".yaml", ".yml":
 				providers = append(providers, yaml.WithPath(configPath))
 			}
+		} else {
+			providers = append(providers, json.New(), toml.New(), yaml.New())
 		}
 	} else {
 		providers = append(providers, json.New(), toml.New(), yaml.New())
